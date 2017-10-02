@@ -1,3 +1,5 @@
+# CREDITS: https://github.com/bartbroere/bitstamp-python-websocket-client
+
 from decimal import Decimal
 #import pusherclient
 import pusherclientb as pusherclient
