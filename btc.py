@@ -6,7 +6,7 @@ import os
 
 start_money = 100 # EUR
 commision = 0.0025 # 0.25%
-adjustment = 0.00001 # smallest value on btc
+adjustment = 0.00001 # smallest value on b1tstamp?
 
 success_eur = 0
 success_eur_c = 0
@@ -47,30 +47,40 @@ def eur2btc(start_money, price):
 	adjustment = 'false'
 
 	self = {}
-	self['eur2btc'] = buy(price, 'eur', 'btc', commision, adjustment, start_money) # buy btc with eur
-	self['btc2usd'] = sell(price, 'btc', 'usd', commision, adjustment, self['eur2btc']) # sell btc for usd
-	self['usd2eur'] = buy(price, 'usd', 'eur', commision, adjustment, self['btc2usd']) # buy eur with usd
+	self['btc'] = buy(price, 'eur', 'btc', commision, adjustment, start_money) # buy btc with eur
+	self['usd'] = sell(price, 'btc', 'usd', commision, adjustment, self['btc']) # sell btc for usd
+	self['eur'] = buy(price, 'usd', 'eur', commision, adjustment, self['usd']) # buy eur with usd
 
-	success_eur       = increaseValue(start_money, self['usd2eur'], success_eur)
-	ratio_eur         = self['usd2eur'] / start_money
+	success_eur       = increaseValue(start_money, self['eur'], success_eur)
+	ratio_eur         = self['eur'] / start_money
 	highest_ratio_eur = compare_and_update(highest_ratio_eur, ratio_eur)
 
-	print "EUR: ", start_money, " -> BTC:   ", round(self['eur2btc'], 5),     "-> USD:   ", round(self['btc2usd'], 5),     "\t-> EUR:   ", round(self['usd2eur'], 5),     "\t(ratio: ", ratio_eur, ", success: ", success_eur, ", highest: ", highest_ratio_eur, ")"
+	conversionPrinter("EUR", start_money,
+			  "BTC", self['btc'],
+			  "USD", self['usd'],
+			  "EUR", self['eur'],
+			  ratio_eur, highest_ratio_eur, success_eur)
+
 
 def eur2btc_c(start_money, price):
 	global success_eur_c
 	global highest_ratio_eur_c
 
 	self = {}
-        self['eur2btc_c'] = buy(price, 'eur', 'btc', commision, adjustment, start_money) # buy btc with eur
-        self['btc2usd_c'] = sell(price, 'btc', 'usd', commision, adjustment, self['eur2btc_c']) # sell btc for usd
-        self['usd2eur_c'] = buy(price, 'usd', 'eur', commision, adjustment, self['btc2usd_c']) # buy eur with usd
+        self['btc_c'] = buy(price, 'eur', 'btc', commision, adjustment, start_money) # buy btc with eur
+        self['usd_c'] = sell(price, 'btc', 'usd', commision, adjustment, self['btc_c']) # sell btc for usd
+        self['eur_c'] = buy(price, 'usd', 'eur', commision, adjustment, self['usd_c']) # buy eur with usd
 
-	success_eur_c       = increaseValue(start_money, self['usd2eur_c'], success_eur_c)
-	ratio_eur_c         = self['usd2eur_c'] / start_money
+	success_eur_c       = increaseValue(start_money, self['eur_c'], success_eur_c)
+	ratio_eur_c         = self['eur_c'] / start_money
 	highest_ratio_eur_c = compare_and_update(highest_ratio_eur_c, ratio_eur_c)
 
-	print "EUR: ", start_money, " -> BTC_c: ", round(self['eur2btc_c'], 5), "-> USD_c: ", round(self['btc2usd_c'], 5), "\t-> EUR_c: ", round(self['usd2eur_c'], 5), "\t(ratio: ", ratio_eur_c, ", success: ", success_eur_c, ", highest: ", highest_ratio_eur_c, ")"
+
+        conversionPrinter("EUR", start_money,
+                          "BTC", self['btc_c'],
+                          "USD", self['usd_c'],
+                          "EUR", self['eur_c'],
+                          ratio_eur_c, highest_ratio_eur_c, success_eur_c)
 
 def eur2usd(start_money, price):
 	global success_usd
@@ -78,30 +88,49 @@ def eur2usd(start_money, price):
 	adjustment = 'false'
 
 	self = {}
-	self['eur2usd'] = sell(price, 'eur', 'usd', commision, adjustment, start_money) # sell eur for usd
-	self['usd2btc'] = buy(price, 'usd', 'btc', commision, adjustment, self['eur2usd']) # buy btc with usd
-	self['btc2eur'] = sell(price, 'btc', 'eur', commision, adjustment, self['usd2btc']) # sell btc for eur
+	self['usd'] = sell(price, 'eur', 'usd', commision, adjustment, start_money) # sell eur for usd
+	self['btc'] = buy(price, 'usd', 'btc', commision, adjustment, self['usd']) # buy btc with usd
+	self['eur'] = sell(price, 'btc', 'eur', commision, adjustment, self['btc']) # sell btc for eur
 
-	success_usd       = increaseValue(start_money, self['btc2eur'], success_usd)
-	ratio_usd         = self['btc2eur'] / start_money
+	success_usd       = increaseValue(start_money, self['eur'], success_usd)
+	ratio_usd         = self['eur'] / start_money
 	highest_ratio_usd = compare_and_update(highest_ratio_usd, ratio_usd)
 
-	print "EUR: ", start_money, " -> USD:   ", round(self['eur2usd'], 5)    , "-> BTC:   ", round(self['usd2btc'], 5)    , "\t-> EUR:   ", round(self['btc2eur'], 5),     "\t(ratio: ", ratio_usd,   ", success: ", success_usd, ", highest: ", highest_ratio_usd, ")"
+        conversionPrinter("EUR", start_money,
+                          "USD", self['usd'],
+                          "BTC", self['btc'],
+                          "EUR", self['eur'],
+                          ratio_usd, highest_ratio_usd, success_usd)
 
 def eur2usd_c(start_money, price):
 	global success_usd_c
 	global highest_ratio_usd_c
 
         self = {}
-        self['eur2usd_c'] = sell(price, 'eur', 'usd', commision, adjustment, start_money) # sell eur for usd
-        self['usd2btc_c'] = buy(price, 'usd', 'btc', commision, adjustment, self['eur2usd_c']) # buy btc with usd
-        self['btc2eur_c'] = sell(price, 'btc', 'eur', commision, adjustment, self['usd2btc_c']) # sell btc for eur
+        self['usd_c'] = sell(price, 'eur', 'usd', commision, adjustment, start_money) # sell eur for usd
+        self['btc_c'] = buy(price, 'usd', 'btc', commision, adjustment, self['usd_c']) # buy btc with usd
+        self['eur_c'] = sell(price, 'btc', 'eur', commision, adjustment, self['btc_c']) # sell btc for eur
 
-	success_usd_c       = increaseValue(start_money, self['btc2eur_c'], success_usd_c)
-	ratio_usd_c         = self['btc2eur_c'] / start_money
+	success_usd_c       = increaseValue(start_money, self['eur_c'], success_usd_c)
+	ratio_usd_c         = self['eur_c'] / start_money
 	highest_ratio_usd_c = compare_and_update(highest_ratio_usd_c, ratio_usd_c)
 
-	print "EUR: ", start_money, " -> USD_c: ", round(self['eur2usd_c'], 5), "-> BTC_c: ", round(self['usd2btc_c'], 5), "\t-> EUR_c: ", round(self['btc2eur_c'], 5), "\t(ratio: ", ratio_usd_c, ", success: ", success_usd_c, ", highest: ", highest_ratio_usd_c, ")"
+        conversionPrinter("EUR", start_money,
+                          "USD", self['usd_c'],
+                          "BTC", self['btc_c'],
+                          "EUR", self['eur_c'],
+                          ratio_usd_c, highest_ratio_usd_c, success_usd_c)
+
+def conversionPrinter(startCur, start_money, firstX, firstV, secondX, secondV, thirdX, thirdV, ratio, ratioH, success):
+	output = (startCur,": ",start_money,
+		    firstX,": ",round(firstV, 5),
+		   secondX,": ",round(secondV, 5),
+		    thirdX,": ",round(thirdV, 5),
+		     "(ratio: ",ratio,
+		", max ratio: ",ratioH,
+		  ", success: ",success)
+
+	print output
 
 def increaseValue(first, second, third):
 	self = third
@@ -134,19 +163,20 @@ def sell(orderbook, fromCurrency, toCurrency, commision, adjustment, amount):
 	self = (amount * (orderbook[fromCurrency + toCurrency + '_ask_v']) - adjustment) - ((amount * (orderbook[fromCurrency + toCurrency + '_ask_v']) - adjustment) * commision)
 	return self
 
+def doStuff(start_money, price):
+	eur2btc(start_money, price)
+	eur2btc_c(start_money, price)
+	eur2usd(start_money, price)
+	eur2usd_c(start_money, price)
+
+
 # ------ START HERE
 
-while 'asks' not in client.orderbook['btc']['usd']:
+while ('asks' and 'bids') not in client.orderbook['btc']['usd']:
 	time.sleep(0.1)
-while 'bids' not in client.orderbook['btc']['usd']:
+while ('asks' and 'bids') not in client.orderbook['btc']['eur']:
 	time.sleep(0.1)
-while 'asks' not in client.orderbook['btc']['eur']:
-	time.sleep(0.1)
-while 'bids' not in client.orderbook['btc']['eur']:
-	time.sleep(0.1)
-while 'asks' not in client.orderbook['eur']['usd']:
-	time.sleep(0.1)
-while 'bids' not in client.orderbook['eur']['usd']:
+while ('asks' and 'bids') not in client.orderbook['eur']['usd']:
 	time.sleep(0.1)
 
 while True:
@@ -154,8 +184,4 @@ while True:
 	if price != fetchPrice():
 		print "------------------------------------------------------------------------------------------------------------------------------------------------------------------------------"
 		print datetime.datetime.now()
-
-		eur2btc(start_money, price)
-		eur2btc_c(start_money, price)
-		eur2usd(start_money, price)
-		eur2usd_c(start_money, price)
+		doStuff(start_money, price)
