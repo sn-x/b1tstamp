@@ -1,3 +1,5 @@
+from auth import trading_client
+import bitstamp.client
 import datetime
 import wsclient
 import logging
@@ -172,16 +174,18 @@ def doStuff(start_money, price):
 
 # ------ START HERE
 
-while ('asks' and 'bids') not in client.orderbook['btc']['usd']:
-	time.sleep(0.1)
-while ('asks' and 'bids') not in client.orderbook['btc']['eur']:
-	time.sleep(0.1)
-while ('asks' and 'bids') not in client.orderbook['eur']['usd']:
-	time.sleep(0.1)
+#while ('asks' and 'bids') not in client.orderbook['btc']['usd']:
+#	time.sleep(0.1)
+#while ('asks' and 'bids') not in client.orderbook['btc']['eur']:
+#	time.sleep(0.1)
+#while ('asks' and 'bids') not in client.orderbook['eur']['usd']:
+#	time.sleep(0.1)
+
+print(trading_client.account_balance()['fee'])
 
 while True:
 	price = fetchPrice()
 	if price != fetchPrice():
 		print "------------------------------------------------------------------------------------------------------------------------------------------------------------------------------"
 		print datetime.datetime.now()
-		doStuff(start_money, price)
+#		doStuff(start_money, price)
