@@ -54,9 +54,6 @@ def executeConversion(basics, order_book, adjustment, history):
 	global directions
 	notice = ''
 
-#	print basics
-#	sys.exit(0)
-
 	if history == 'false':
 		history = {}
 		history['depth'] = 0
@@ -72,21 +69,28 @@ def executeConversion(basics, order_book, adjustment, history):
 	working_value = basics['working_value']
 	working_currency = basics['working_currency']
 	directions_buy = directions['buy']
+	directions_sell = directions['sell']
 	depth = history['depth']
 
-        if (history['depth'] > 3) and (history['start_currency'] == start_currency):
+        if (history['depth'] > 10):
+		evaluateConversion(history)
+                sys.exit(1)
+
+        if (history['depth'] > 3) and (history['start_currency'] == working_currency):
                 evaluateConversion(history)
+		sys.exit(1)
 
-	if basics['working_currency'] in directions['buy']:
+	if working_currency in directions_buy:
 		for conversion in directions_buy[working_currency]:
-			print conversion
-			history[conversion,depth] = buy(order_book, working_currency, conversion, adjustment, working_value)
-			basics['working_value'] = history[conversion,depth]
-			basics['working_currency'] = conversion
+			history[working_currency,"2",conversion,depth] = buy(order_book, working_currency, conversion, adjustment, working_value)
+			basics['working_value']['buy'] = history[working_currency,"2",conversion,depth]
+			basics['working_currency']['buy'] = conversion
 
-#	if basics['working_currency'] in directions['sell']:
-#		for conversion in directions['sell'][basics['working_currency']]
-#			history[conversion + "_" + depth] = sell(order_book, basics['working_currency', conversion, adjustment, basics['working_value'])
+        if working_currency in directions_sell:
+                for conversion in directions_sell[working_currency]:
+                        history[working_currency,"2",conversion,depth] = sell(order_book, working_currency, conversion, adjustment, working_value)
+                        basics['working_value']['sell'] = history[working_currency,"2",conversion,depth]
+                        basics['working_currency']['sell'] = conversion
 
 	history['depth'] += 1
 	executeConversion(basics, order_book, adjustment, history)
@@ -95,116 +99,50 @@ def evaluateConversion(history):
 	global counters
 
 	print history
+
 #        if (start_currency +  notice) not in counters:
 #                counters[start_currency + "-to-" +  ] = ''
 
 #	if adjustment != 'false':
 #        	        notice = 'ADJUSTED'
 
-def eur2btc(start_money, order_book, adjustment):
-	global counters
-	notice = ''
-
-	if adjustment != 'false':
-		notice = 'ADJUSTED'
-
-	self = {}
-	self['btc'] = buy(order_book, 'eur', 'btc', commision, adjustment, start_money) # buy btc with eur
-	self['usd'] = sell(order_book, 'btc', 'usd', commision, adjustment, self['btc']) # sell btc for usd
-	self['eur'] = buy(order_book, 'usd', 'eur', commision, adjustment, self['usd']) # buy eur with usd
-
-	ratio_eur = self['eur'] / start_money
-	if ratio_eur > 1:
-		executeBuy(start_money, self)
-
-	highest_ratio_eur = compare_and_update(highest_ratio_eur, ratio_eur)
-	success_eur = increaseValue(start_money, self['eur'], success_eur)
-
-	if adjustment != 'false':
-		notice = 'ADJUSTED'
-
-	conversionPrinter("EUR", start_money,
-			  "BTC", self['btc'],
-			  "USD", self['usd'],
-			  "EUR", self['eur'],
-			  ratio_eur, highest_ratio_eur, success_eur, notice)
-
-def eur2usd(start_money, order_book, adjustment):
-	global success_usd
-        global highest_ratio_usd
-	notice = ''
-
-	self = {}
-	self['usd'] = sell(order_book, 'eur', 'usd', commision, adjustment, start_money) # sell eur for usd
-	self['btc'] = buy(order_book, 'usd', 'btc', commision, adjustment, self['usd']) # buy btc with usd
-	self['eur'] = sell(order_book, 'btc', 'eur', commision, adjustment, self['btc']) # sell btc for eur
-
-	ratio_usd = self['eur'] / start_money
-	if ratio_usd > 1:
-                executeBuy(start_money, self)
-
-	highest_ratio_usd = compare_and_update(highest_ratio_usd, ratio_usd)
-	success_usd = increaseValue(start_money, self['eur'], success_usd)
-
-        if adjustment != 'false':
-                notice = 'ADJUSTED'
-
-        conversionPrinter("EUR", start_money,
-                          "USD", self['usd'],
-                          "BTC", self['btc'],
-                          "EUR", self['eur'],
-                          ratio_usd, highest_ratio_usd, success_usd, notice)
-
-def conversionPrinter(startCur, start_money, firstX, firstV, secondX, secondV, thirdX, thirdV, ratio, ratioH, success, notice):
-	print (startCur,": ",start_money,
-	         firstX,": ",round(firstV, 5),
-	        secondX,": ",round(secondV, 5),
-		 thirdX,": ",round(thirdV, 5),
-		  "(ratio: ",ratio,
-	     ", max ratio: ",ratioH,
-	       ", success: ",success,notice)
-
-def increaseValue(first, second, third):
-	self = third
-        if second > first:
-		self += 1
-
-	return self
-
-def compare_and_update(first, second):
-	if second > first:
-		self = second
-	else:
-		self = first
-
-        return self
-
 def buy(orderbook, fromCurrency, toCurrency, adjustment, amount):
 	global parameters
 
 	if adjustment == 'false':
-		self = ((amount / orderbook[toCurrency + fromCurrency + '_ask_v']) - 
-		       ((amount / orderbook[toCurrency + fromCurrency + '_ask_v']) * parameters['commision']))
+		self = ((amount / orderbook[toCurrency + fromCurrency + '_ask_v']) - ((amount / orderbook[toCurrency + fromCurrency + '_ask_v']) * parameters['commision']))
 		return self
 
-	self = ((amount / (orderbook[toCurrency + fromCurrency + '_bid_v']) + adjustment) - 
-	       ((amount / (orderbook[toCurrency + fromCurrency + '_bid_v']) + adjustment) * parameters['commision']))
+	self = ((amount / (orderbook[toCurrency + fromCurrency + '_bid_v']) + adjustment) - ((amount / (orderbook[toCurrency + fromCurrency + '_bid_v']) + adjustment) * parameters['commision']))
 
 	return self
 
-def sell(orderbook, fromCurrency, toCurrency, commision, adjustment, amount):
+def sell(orderbook, fromCurrency, toCurrency, adjustment, amount):
 	if adjustment == 'false':
-		self = ((amount * orderbook[fromCurrency + toCurrency + '_bid_v']) - 
-		       ((amount * orderbook[fromCurrency + toCurrency + '_bid_v']) * commision))
+		self = ((amount * orderbook[fromCurrency + toCurrency + '_bid_v']) - ((amount * orderbook[fromCurrency + toCurrency + '_bid_v']) * parameters['commision']))
 		return self
 
-	self = ((amount * (orderbook[fromCurrency + toCurrency + '_ask_v']) - adjustment) - 
-	       ((amount * (orderbook[fromCurrency + toCurrency + '_ask_v']) - adjustment) * commision))
+	self = ((amount * (orderbook[fromCurrency + toCurrency + '_ask_v']) - adjustment) - ((amount * (orderbook[fromCurrency + toCurrency + '_ask_v']) - adjustment) * parameters['commision']))
 
 	return self
 
 def executeBuy(start_money, conversions):
 	print "nope"	
+
+def increaseValue(first, second, third):
+        self = third
+        if second > first:
+                self += 1
+
+        return self
+
+def compare_and_update(first, second):
+        if second > first:
+                self = second
+        else:
+                self = first
+
+        return self
 
 def doStuff(order_book):
 	global parameters
@@ -222,11 +160,6 @@ def doStuff(order_book):
 				adjustment = parameters['adjustment']
 				executeConversion(basics, order_book, adjustment, 'false')
 				sys.exit(0)
-
-#	eur2btc(parameters['start_money'], order_book, parameters['adjustment'] = 'false')
-#	eur2btc(parameters['start_money'], order_book, parameters['adjustment'])
-#	eur2usd(parameters['start_money'], order_book, parameters['adjustment'] = 'false')
-#	eur2usd(parameters['start_money'], order_book, parameters['adjustment'])
 
 # ------ START HERE
 
