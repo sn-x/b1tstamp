@@ -14,7 +14,8 @@ parameters  = {'start_amount_btc': 0.025,
 	       'adjustment': 0.00001, } # smallest value on b1tstamp?
 
 conversions = {'btc': {'usd', 'eur'}, 
-               'eur': {'usd'}}
+               'eur': {'usd'},
+	       'ltc': {'usd', 'eur', 'btc'}}
 
 directions  = {'buy': {'eur': {'btc'},
                        'usd': {'btc', 'eur'}},
