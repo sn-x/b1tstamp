@@ -31,7 +31,7 @@ logger.addHandler(loggerHandler)
 logger.setLevel(logging.WARNING) # TODO: This doesn't work
 
 client_bitstamp_ws = wsclient.BitstampWebsocketClient()
-#client_redis = redis.StrictRedis(host='localhost', port=6379, db=0)
+client_redis = redis.StrictRedis(host='localhost', port=6379, db=0)
 
 def fetchOrderBook():
         self = {}
@@ -75,33 +75,17 @@ def possibletrasactions():
 
 	return transactions
 
-def evaluateConversion(history):
-	global counters
-
-	print history
-
 def buy(orderbook, fromCurrency, toCurrency, adjustment, amount):
-	global parameters
-
-	if adjustment == 'false':
-		self = ((amount / orderbook[toCurrency + fromCurrency + '_ask_v']) - ((amount / orderbook[toCurrency + fromCurrency + '_ask_v']) * parameters['commision']))
-		return self
-
-	self = ((amount / (orderbook[toCurrency + fromCurrency + '_bid_v']) + adjustment) - ((amount / (orderbook[toCurrency + fromCurrency + '_bid_v']) + adjustment) * parameters['commision']))
+	self = ((amount / (orderbook[toCurrency + fromCurrency + '_bid_v']) + adjustment) - 
+	       ((amount / (orderbook[toCurrency + fromCurrency + '_bid_v']) + adjustment) * parameters['commision']))
 
 	return self
 
 def sell(orderbook, fromCurrency, toCurrency, adjustment, amount):
-	if adjustment == 'false':
-		self = ((amount * orderbook[fromCurrency + toCurrency + '_bid_v']) - ((amount * orderbook[fromCurrency + toCurrency + '_bid_v']) * parameters['commision']))
-		return self
-
-	self = ((amount * (orderbook[fromCurrency + toCurrency + '_ask_v']) - adjustment) - ((amount * (orderbook[fromCurrency + toCurrency + '_ask_v']) - adjustment) * parameters['commision']))
+	self = ((amount * (orderbook[fromCurrency + toCurrency + '_ask_v']) - adjustment) - 
+	       ((amount * (orderbook[fromCurrency + toCurrency + '_ask_v']) - adjustment) * parameters['commision']))
 
 	return self
-
-def executeBuy(start_money, conversions):
-	print "nope"	
 
 def increaseValue(first, second, third):
         self = third
@@ -126,23 +110,28 @@ def doStuff(order_book):
 		for currency in transaction:
 			if 'from_currency' in trx_details:
 				trx_details['to_currency'] = currency
-				trx_details = checkProfitability(order_book, trx_details)
+				trx_details = calculateProfitability(order_book, trx_details)
 			else:
 				trx_details['from_currency'] = currency
 				trx_details['from_amount'] = parameters['start_amount_' + currency]
 				trx_details['start_amount'] = parameters['start_amount_' + currency]
 
-		updateCounters(transaction, trx_details)
+		trx_string = transactionString(transaction)
+		updateCounters(transaction, trx_details, trx_string)
+
 		print trx_details
 		print "---------------------------------------------------------------------------------------"
 
-def updateCounters(transaction, trx_details):
-	global counters
+def transactionString(transaction):
 	string = ""
-                
-	for currency in transaction:
-		string += str(currency)
+        for currency in transaction:
+                string += str(currency)
 
+	return string
+
+def updateCounters(transaction, trx_details, string):
+	global counters
+                
 	if 'sucess_' + string not in counters:
 		counters['sucess_' + string] = 0
 
@@ -156,12 +145,10 @@ def updateCounters(transaction, trx_details):
 	counters['ratio_' + string] = trx_details['from_amount'] / trx_details['start_amount']
 	counters['highest_ratio_' + string] = compare_and_update(counters['highest_ratio_' + string],  counters['ratio_' + string])
 
-
-def checkProfitability(order_book, trx_details):
+def calculateProfitability(order_book, trx_details):
 	global parameters
 
 	print trx_details
-
 	from_amount = trx_details['from_amount']
 	from_currency = trx_details['from_currency']
 	to_currency = trx_details['to_currency']
@@ -170,13 +157,11 @@ def checkProfitability(order_book, trx_details):
 
 	if from_currency in directions_buy:
 		if to_currency in directions_buy[from_currency]:
-			for conversion in directions_buy[from_currency]:
-				to_amount = buy(order_book, from_currency, to_currency, parameters['adjustment'], from_amount)
+			to_amount = buy(order_book, from_currency, to_currency, parameters['adjustment'], from_amount)
 
 	if from_currency in directions_sell:
 		if to_currency in directions_sell[from_currency]:
-        	        for conversion in directions_sell[from_currency]:
-                	        to_amount = sell(order_book, from_currency, to_currency, parameters['adjustment'], from_amount)
+               	        to_amount = sell(order_book, from_currency, to_currency, parameters['adjustment'], from_amount)
 
 	trx_details['from_amount'] = to_amount
 	trx_details['from_currency'] = to_currency
@@ -190,6 +175,8 @@ while True:
 	if order_book != fetchOrderBook():
 		print "------------------------------------------------------------------------------------------------------------------------------------------------------------------------------"
 		print datetime.datetime.now()
+
 		doStuff(order_book)
+
 		for key in sorted(counters):
 		    print "%s: %s" % (key, counters[key])
