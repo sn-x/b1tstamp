@@ -1,3 +1,4 @@
+import itertools
 import datetime
 import wsclient
 import logging
@@ -6,7 +7,9 @@ import time
 import sys
 import os
 
-parameters  = {'start_money_value': 1,
+parameters  = {'start_amount_btc': 0.025,
+	       'start_amount_eur': 100,
+	       'start_amount_usd': 100,
 	       'commision': 0.0025,  # 0.25%
 	       'adjustment': 0.00001, } # smallest value on b1tstamp?
 
@@ -28,7 +31,7 @@ logger.addHandler(loggerHandler)
 logger.setLevel(logging.WARNING) # TODO: This doesn't work
 
 client_bitstamp_ws = wsclient.BitstampWebsocketClient()
-client_redis = redis.StrictRedis(host='localhost', port=6379, db=0)
+#client_redis = redis.StrictRedis(host='localhost', port=6379, db=0)
 
 def fetchOrderBook():
         self = {}
@@ -43,68 +46,39 @@ def fetchOrderBook():
 
 def checkOrderBook(currency, conversion):
         while ('asks' and 'bids') not in client_bitstamp_ws.orderbook[currency][conversion]:
-		print "Empty orderbook. Resubscribing.." + currency + " : " + conversion
+		print "Empty orderbook. Resubscribing.. " + currency + " : " + conversion
                 subscribe(currency, conversion)
                 time.sleep(1)
 
 def subscribe(currency, conversion):
         client_bitstamp_ws.subscribe("order_book", currency, conversion)
 
-def executeConversion(basics, order_book, adjustment, history):
-	global directions
-	notice = ''
+def possibletrasactions():
+	currencies = []
+	transactions = []
 
-	if history == 'false':
-		history = {}
-		history['depth'] = 0
-		history['adjustment'] = adjustment
-		history['start_value'] = basics['start_value']
-		history['start_currency'] = basics['start_currency']
-		history['working_value'] = basics['start_value']
-		history['working_currency'] = basics['start_currency']
+	for type in directions:
+		type_dic = directions[type]
+		for currency in type_dic:
+			currency_dic = type_dic[currency]
+			for trx in currency_dic:
+				currencies.append(trx)
 
-                basics['working_value'] = basics['start_value']
-                basics['working_currency'] = basics['start_currency']
+	currencies = list(set(currencies))
+	permutations = list(itertools.permutations(currencies))
 
-	working_value = basics['working_value']
-	working_currency = basics['working_currency']
-	directions_buy = directions['buy']
-	directions_sell = directions['sell']
-	depth = history['depth']
+	for trx_flow in permutations:
+		trx_flow = list(trx_flow)
+		currency = trx_flow[0]
+		trx_flow.append(currency)
+		transactions.append(trx_flow)
 
-        if (history['depth'] > 10):
-		evaluateConversion(history)
-                sys.exit(1)
-
-        if (history['depth'] > 3) and (history['start_currency'] == working_currency):
-                evaluateConversion(history)
-		sys.exit(1)
-
-	if working_currency in directions_buy:
-		for conversion in directions_buy[working_currency]:
-			history[working_currency,"2",conversion,depth] = buy(order_book, working_currency, conversion, adjustment, working_value)
-			basics['working_value']['buy'] = history[working_currency,"2",conversion,depth]
-			basics['working_currency']['buy'] = conversion
-
-        if working_currency in directions_sell:
-                for conversion in directions_sell[working_currency]:
-                        history[working_currency,"2",conversion,depth] = sell(order_book, working_currency, conversion, adjustment, working_value)
-                        basics['working_value']['sell'] = history[working_currency,"2",conversion,depth]
-                        basics['working_currency']['sell'] = conversion
-
-	history['depth'] += 1
-	executeConversion(basics, order_book, adjustment, history)
+	return transactions
 
 def evaluateConversion(history):
 	global counters
 
 	print history
-
-#        if (start_currency +  notice) not in counters:
-#                counters[start_currency + "-to-" +  ] = ''
-
-#	if adjustment != 'false':
-#        	        notice = 'ADJUSTED'
 
 def buy(orderbook, fromCurrency, toCurrency, adjustment, amount):
 	global parameters
@@ -145,21 +119,69 @@ def compare_and_update(first, second):
         return self
 
 def doStuff(order_book):
+	transactions = possibletrasactions()
+
+	for transaction in transactions:
+		trx_details = {}
+		for currency in transaction:
+			if 'from_currency' in trx_details:
+				trx_details['to_currency'] = currency
+				trx_details = checkProfitability(order_book, trx_details)
+			else:
+				trx_details['from_currency'] = currency
+				trx_details['from_amount'] = parameters['start_amount_' + currency]
+				trx_details['start_amount'] = parameters['start_amount_' + currency]
+
+		updateCounters(transaction, trx_details)
+		print trx_details
+		print "---------------------------------------------------------------------------------------"
+
+def updateCounters(transaction, trx_details):
+	global counters
+	string = ""
+                
+	for currency in transaction:
+		string += str(currency)
+
+	if 'sucess_' + string not in counters:
+		counters['sucess_' + string] = 0
+
+	if 'ratio_' + string not in counters:
+		counters['ratio_' + string] = 0
+
+	if 'highest_ratio_' + string not in counters:
+		counters['highest_ratio_' + string] = 0
+
+	counters['sucess_' + string] = increaseValue(trx_details['start_amount'], trx_details['from_amount'], counters['sucess_' + string])
+	counters['ratio_' + string] = trx_details['from_amount'] / trx_details['start_amount']
+	counters['highest_ratio_' + string] = compare_and_update(counters['highest_ratio_' + string],  counters['ratio_' + string])
+
+
+def checkProfitability(order_book, trx_details):
 	global parameters
-	global directions
 
-	basics = {}
+	print trx_details
 
-	for type in directions:
-		basics['type'] = type
-		for currency in directions[type]:
-			basics['start_currency'] = currency
-			basics['start_value'] = parameters['start_money_value']
-			for conversion in directions[type][currency]:
-				basics['conversion'] = conversion
-				adjustment = parameters['adjustment']
-				executeConversion(basics, order_book, adjustment, 'false')
-				sys.exit(0)
+	from_amount = trx_details['from_amount']
+	from_currency = trx_details['from_currency']
+	to_currency = trx_details['to_currency']
+	directions_buy = directions['buy']
+	directions_sell = directions['sell']
+
+	if from_currency in directions_buy:
+		if to_currency in directions_buy[from_currency]:
+			for conversion in directions_buy[from_currency]:
+				to_amount = buy(order_book, from_currency, to_currency, parameters['adjustment'], from_amount)
+
+	if from_currency in directions_sell:
+		if to_currency in directions_sell[from_currency]:
+        	        for conversion in directions_sell[from_currency]:
+                	        to_amount = sell(order_book, from_currency, to_currency, parameters['adjustment'], from_amount)
+
+	trx_details['from_amount'] = to_amount
+	trx_details['from_currency'] = to_currency
+
+	return trx_details
 
 # ------ START HERE
 
@@ -169,3 +191,5 @@ while True:
 		print "------------------------------------------------------------------------------------------------------------------------------------------------------------------------------"
 		print datetime.datetime.now()
 		doStuff(order_book)
+		for key in sorted(counters):
+		    print "%s: %s" % (key, counters[key])
