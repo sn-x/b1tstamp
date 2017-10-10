@@ -8,19 +8,22 @@ import sys
 import os
 
 parameters  = {'start_amount_btc': 0.025,
+	       'start_amount_ltc': 0.025,
 	       'start_amount_eur': 100,
 	       'start_amount_usd': 100,
 	       'commision': 0.0025,  # 0.25%
 	       'adjustment': 0.00001, } # smallest value on b1tstamp?
 
-conversions = {'btc': {'usd', 'eur'}, 
+conversions = {'btc': {'usd', 'eur'},
                'eur': {'usd'},
-	       'ltc': {'usd', 'eur', 'btc'}}
+               'ltc': {'usd', 'eur', 'btc'}}
 
-directions  = {'buy': {'eur': {'btc'},
-                       'usd': {'btc', 'eur'}},
+directions  = {'buy': {'eur': {'btc', 'ltc'},
+                       'usd': {'btc', 'eur', 'ltc'},
+                       'btc': {'ltc'}},
                'sell': {'btc': {'eur', 'usd'},
-                        'eur': {'usd'}}}
+                        'eur': {'usd'},
+                        'ltc': {'eur', 'usd', 'btc'}}}
 
 counters = {}
 
