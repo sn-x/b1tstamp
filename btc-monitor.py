@@ -222,8 +222,9 @@ def validateProfitability(history):
 
 def executeTransaction(transaction_steps):
 	print transaction_steps
-	for trx in transaction_steps:
-		client_redis.publish(trx, transaction_steps[trx])
+	for step in transaction_steps:
+		print transaction_steps[step]['from_currency']
+		client_redis.publish(transaction_steps[step]['from_currency'], transaction_steps[step])
 
 # ------ START HERE
 
