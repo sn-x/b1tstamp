@@ -116,26 +116,24 @@ def doStuff():
 	for transaction in transactions:
 		trx_string = transactionString(transaction)
 		trx_details = {}
-		history[trx_string] = {}
+		history.update({trx_string: {}})
 		trx_step = 0
-
 		for currency in transaction:
 			if 'from_currency' in trx_details:
-				trx_details['to_currency'] = currency
-				results = calculateProfitability(order_book, trx_details, trx_string, trx_step)
-				trx_details = results['trx_details']
 				trx_step += 1
+				history[trx_string][trx_step] = {}
+				trx_details['to_currency'] = currency
+				results = calculateProfitability(order_book, trx_details, trx_string)
+		                history[trx_string][trx_step].update(results['history'])
+				trx_details = results['trx_details']
 			else:
 				trx_details['from_currency'] = currency
 				trx_details['from_amount'] = parameters['start_amount_' + currency]
 				trx_details['start_amount'] = parameters['start_amount_' + currency]
 
-		history[trx_string][trx_step] = results['history']
 		updateCounters(transaction, trx_details, trx_string)
 
 	return history
-		#print trx_details
-		#print "---------------------------------------------------------------------------------------"
 
 def highestValueTransaction(counters):
 	transaction_values = []
@@ -175,7 +173,7 @@ def updateCounters(transaction, trx_details, string):
 	counters['ratio'][string] = trx_details['from_amount'] / trx_details['start_amount']
 	counters['highest_ratio'][string] = compare_and_update(counters['highest_ratio'][string],  counters['ratio'][string])
 
-def calculateProfitability(order_book, trx_details, trx_string, trx_step):
+def calculateProfitability(order_book, trx_details, trx_string):
 	global parameters
 
 	logger.debug(trx_details)
@@ -196,20 +194,36 @@ def calculateProfitability(order_book, trx_details, trx_string, trx_step):
                	        to_amount = sell(order_book, from_currency, to_currency, parameters['adjustment'], from_amount)
 			type = 'sell'
 
-	history = {trx_step: {
-			trx_details['from_currency']:
-				{'from_amount': trx_details['from_amount'],
-				 'to_currency': trx_details['to_currency'],
-				 'type': type }}}
+	history = {'from_currency': trx_details['from_currency'],
+		   'from_amount': trx_details['from_amount'],
+		   'to_currency': trx_details['to_currency'],
+		   'to_amount': to_amount,
+		   'type': type }
 
         trx_details['from_amount'] = to_amount
         trx_details['from_currency'] = to_currency
 
 	return {'trx_details': trx_details, 'history': history}
 
-def valiteProfitability(transaction):
-	print transaction
-	
+def validateProfitability(history):
+	highest_value_transaction = highestValueTransaction(counters)
+	transaction = history[highest_value_transaction]
+
+	first_transaction = 1
+	last_transaction = len(transaction.keys())
+
+	before_amount = transaction[first_transaction]['from_amount']
+	after_amount = transaction[last_transaction]['to_amount']
+
+	if after_amount > before_amount:
+		executeTransaction(transaction)
+	else:
+		print "Nope: Highest value transaction has ratio: ", counters['ratio'][highest_value_transaction]
+
+def executeTransaction(transaction_steps):
+	print transaction_steps
+	for trx in transaction_steps:
+		client_redis.publish(trx, transaction_steps[trx])
 
 # ------ START HERE
 
@@ -218,8 +232,8 @@ logger = customLogger()
 while True:
 	order_book = fetchOrderBook()
 	if order_book != fetchOrderBook():
-		#print "------------------------------------------------------------------------------------------------------------------------------------------------------------------------------"
-		#print datetime.datetime.now()
+		print "------------------------------------------------------------------------------------------------------------------------------------------------------------------------------"
+		print datetime.datetime.now()
 
 		history = doStuff()
 
@@ -227,6 +241,5 @@ while True:
 			#print "%s: %s" % (type, counters[type])
 			logger.debug(counters[type])
 
-		h_value_transaction = highestValueTransaction(counters)
-#		print history
-		valiteProfitability(history[h_value_transaction])
+		validateProfitability(history)
+		print datetime.datetime.now()
