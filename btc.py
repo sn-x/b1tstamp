@@ -7,12 +7,13 @@ import time
 import sys
 import os
 
+
 parameters  = {'start_amount_btc': 0.025,
-	       'start_amount_ltc': 0.025,
+	       'start_amount_ltc': 0.25,
 	       'start_amount_eur': 100,
 	       'start_amount_usd': 100,
 	       'commision': 0.0025,  # 0.25%
-	       'adjustment': 0.00001, } # smallest value on b1tstamp?
+	       'adjustment': 0.00001 } # smallest value on b1tstamp?
 
 conversions = {'btc': {'usd', 'eur'},
                'eur': {'usd'},
@@ -20,22 +21,23 @@ conversions = {'btc': {'usd', 'eur'},
 
 directions  = {'buy': {'eur': {'btc', 'ltc'},
                        'usd': {'btc', 'eur', 'ltc'},
-                       'btc': {'ltc'}},
-               'sell': {'btc': {'eur', 'usd'},
-                        'eur': {'usd'},
-                        'ltc': {'eur', 'usd', 'btc'}}}
+                       'btc': {'ltc'} },
+               'sell': conversions }
 
-counters = {}
-
-logger = logging.getLogger()
-for handler in logger.handlers:
-    logger.removeHandler(handler)
-loggerHandler = logging.FileHandler('/tmp/bitstamp-' + os.path.basename(__file__) + '.log')
-logger.addHandler(loggerHandler)
-logger.setLevel(logging.WARNING) # TODO: This doesn't work
+counters = {'success': {}, 'ratio': {}, 'highest_ratio':{} }
 
 client_bitstamp_ws = wsclient.BitstampWebsocketClient()
 client_redis = redis.StrictRedis(host='localhost', port=6379, db=0)
+
+def customLogger():
+	logger = logging.getLogger()
+	for handler in logger.handlers:
+		logger.removeHandler(handler)
+	loggerHandler = logging.FileHandler('/tmp/bitstamp-' + os.path.basename(__file__) + '.log')
+	loggerHandler.setLevel(logging.WARNING)
+	logger.addHandler(loggerHandler)
+
+	return logger
 
 def fetchOrderBook():
         self = {}
@@ -106,25 +108,49 @@ def compare_and_update(first, second):
 
         return self
 
-def doStuff(order_book):
+def doStuff():
+	history = {}
+	order_book = fetchOrderBook()
 	transactions = possibletrasactions()
 
 	for transaction in transactions:
+		trx_string = transactionString(transaction)
 		trx_details = {}
+		history[trx_string] = {}
+		trx_step = 0
+
 		for currency in transaction:
 			if 'from_currency' in trx_details:
 				trx_details['to_currency'] = currency
-				trx_details = calculateProfitability(order_book, trx_details)
+				results = calculateProfitability(order_book, trx_details, trx_string, trx_step)
+				trx_details = results['trx_details']
+				trx_step += 1
 			else:
 				trx_details['from_currency'] = currency
 				trx_details['from_amount'] = parameters['start_amount_' + currency]
 				trx_details['start_amount'] = parameters['start_amount_' + currency]
 
-		trx_string = transactionString(transaction)
+		history[trx_string][trx_step] = results['history']
 		updateCounters(transaction, trx_details, trx_string)
 
-		print trx_details
-		print "---------------------------------------------------------------------------------------"
+	return history
+		#print trx_details
+		#print "---------------------------------------------------------------------------------------"
+
+def highestValueTransaction(counters):
+	transaction_values = []
+
+	for transaction, value in counters['ratio'].items():
+		transaction_values.append(value)
+
+	transaction_values.sort(reverse=True)
+
+	for transaction, value in counters['ratio'].items():
+		if value == transaction_values[0]:
+			return transaction
+
+	print "Couldn't find highest value transaction. Fatal error."
+	sys.exit(1)
 
 def transactionString(transaction):
 	string = ""
@@ -136,23 +162,24 @@ def transactionString(transaction):
 def updateCounters(transaction, trx_details, string):
 	global counters
                 
-	if 'sucess_' + string not in counters:
-		counters['sucess_' + string] = 0
+	if string not in counters['success']:
+		counters['success'][string] = 0
 
-	if 'ratio_' + string not in counters:
-		counters['ratio_' + string] = 0
+	if string not in counters['ratio']:
+		counters['ratio'][string] = 0
 
-	if 'highest_ratio_' + string not in counters:
-		counters['highest_ratio_' + string] = 0
+	if string not in counters['highest_ratio']:
+		counters['highest_ratio'][string] = 0
 
-	counters['sucess_' + string] = increaseValue(trx_details['start_amount'], trx_details['from_amount'], counters['sucess_' + string])
-	counters['ratio_' + string] = trx_details['from_amount'] / trx_details['start_amount']
-	counters['highest_ratio_' + string] = compare_and_update(counters['highest_ratio_' + string],  counters['ratio_' + string])
+	counters['success'][string] = increaseValue(trx_details['start_amount'], trx_details['from_amount'], counters['success'][string])
+	counters['ratio'][string] = trx_details['from_amount'] / trx_details['start_amount']
+	counters['highest_ratio'][string] = compare_and_update(counters['highest_ratio'][string],  counters['ratio'][string])
 
-def calculateProfitability(order_book, trx_details):
+def calculateProfitability(order_book, trx_details, trx_string, trx_step):
 	global parameters
 
-	print trx_details
+	logger.debug(trx_details)
+
 	from_amount = trx_details['from_amount']
 	from_currency = trx_details['from_currency']
 	to_currency = trx_details['to_currency']
@@ -162,25 +189,44 @@ def calculateProfitability(order_book, trx_details):
 	if from_currency in directions_buy:
 		if to_currency in directions_buy[from_currency]:
 			to_amount = buy(order_book, from_currency, to_currency, parameters['adjustment'], from_amount)
+			type = 'buy'
 
 	if from_currency in directions_sell:
 		if to_currency in directions_sell[from_currency]:
                	        to_amount = sell(order_book, from_currency, to_currency, parameters['adjustment'], from_amount)
+			type = 'sell'
 
-	trx_details['from_amount'] = to_amount
-	trx_details['from_currency'] = to_currency
+	history = {trx_step: {
+			trx_details['from_currency']:
+				{'from_amount': trx_details['from_amount'],
+				 'to_currency': trx_details['to_currency'],
+				 'type': type }}}
 
-	return trx_details
+        trx_details['from_amount'] = to_amount
+        trx_details['from_currency'] = to_currency
+
+	return {'trx_details': trx_details, 'history': history}
+
+def valiteProfitability(transaction):
+	print transaction
+	
 
 # ------ START HERE
+
+logger = customLogger()
 
 while True:
 	order_book = fetchOrderBook()
 	if order_book != fetchOrderBook():
-		print "------------------------------------------------------------------------------------------------------------------------------------------------------------------------------"
-		print datetime.datetime.now()
+		#print "------------------------------------------------------------------------------------------------------------------------------------------------------------------------------"
+		#print datetime.datetime.now()
 
-		doStuff(order_book)
+		history = doStuff()
 
-		for key in sorted(counters):
-		    print "%s: %s" % (key, counters[key])
+		for type in sorted(counters):
+			#print "%s: %s" % (type, counters[type])
+			logger.debug(counters[type])
+
+		h_value_transaction = highestValueTransaction(counters)
+#		print history
+		valiteProfitability(history[h_value_transaction])
