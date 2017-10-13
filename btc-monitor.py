@@ -2,29 +2,11 @@ import itertools
 import datetime
 import wsclient
 import logging
+import config
 import redis
 import time
 import sys
 import os
-
-
-parameters  = {'start_amount_btc': 0.025,
-	       'start_amount_ltc': 0.25,
-	       'start_amount_eur': 100,
-	       'start_amount_usd': 100,
-	       'commision': 0.0025,  # 0.25%
-	       'adjustment': 0.00001 } # smallest value on b1tstamp?
-
-conversions = {'btc': {'usd', 'eur'},
-               'eur': {'usd'},
-               'ltc': {'usd', 'eur', 'btc'}}
-
-directions  = {'buy': {'eur': {'btc', 'ltc'},
-                       'usd': {'btc', 'eur', 'ltc'},
-                       'btc': {'ltc'} },
-               'sell': conversions }
-
-counters = {'success': {}, 'ratio': {}, 'highest_ratio':{} }
 
 client_bitstamp_ws = wsclient.BitstampWebsocketClient()
 client_redis = redis.StrictRedis(host='localhost', port=6379, db=0)
@@ -42,8 +24,8 @@ def customLogger():
 def fetchOrderBook():
         self = {}
 
-	for currency in conversions:
-		for conversion in conversions[currency]:
+	for currency in config.conversions:
+		for conversion in config.conversions[currency]:
 			checkOrderBook(currency, conversion)
 			self[currency + conversion + '_ask_v'] = float(client_bitstamp_ws.orderbook[currency][conversion]['asks'][0][0])
 			self[currency + conversion + '_bid_v'] = float(client_bitstamp_ws.orderbook[currency][conversion]['bids'][0][0])
@@ -63,8 +45,8 @@ def possibletrasactions():
 	currencies = []
 	transactions = []
 
-	for type in directions:
-		type_dic = directions[type]
+	for type in config.directions:
+		type_dic = config.directions[type]
 		for currency in type_dic:
 			currency_dic = type_dic[currency]
 			for trx in currency_dic:
@@ -81,15 +63,30 @@ def possibletrasactions():
 
 	return transactions
 
-def buy(orderbook, fromCurrency, toCurrency, adjustment, amount):
-	self = ((amount / (orderbook[toCurrency + fromCurrency + '_bid_v']) + adjustment) - 
-	       ((amount / (orderbook[toCurrency + fromCurrency + '_bid_v']) + adjustment) * parameters['commision']))
+def orderbookValue(type, orderbook, fromCurrency, toCurrency):
+	
+	if type == "buy":
+		return orderbook[toCurrency + fromCurrency + '_bid_v']
+
+	if type == "sell":
+		return orderbook[fromCurrency + toCurrency + '_ask_v']
+
+	print "Type not defined. Fatal error."
+	sys.exit(1)
+
+def buy(type, orderbook, fromCurrency, toCurrency, adjustment, amount):
+	orderbook_value = orderbookValue(type, orderbook, fromCurrency, toCurrency)
+
+	self = ((amount / (orderbook_value + adjustment)) - 
+	       ((amount / (orderbook_value + adjustment)) * config.parameters['commision']))
 
 	return self
 
-def sell(orderbook, fromCurrency, toCurrency, adjustment, amount):
-	self = ((amount * (orderbook[fromCurrency + toCurrency + '_ask_v']) - adjustment) - 
-	       ((amount * (orderbook[fromCurrency + toCurrency + '_ask_v']) - adjustment) * parameters['commision']))
+def sell(type, orderbook, fromCurrency, toCurrency, adjustment, amount):
+	orderbook_value = orderbookValue(type, orderbook, fromCurrency, toCurrency)
+
+	self = ((amount * (orderbook_value - adjustment)) - 
+	       ((amount * (orderbook_value - adjustment)) * config.parameters['commision']))
 
 	return self
 
@@ -128,8 +125,8 @@ def doStuff():
 				trx_details = results['trx_details']
 			else:
 				trx_details['from_currency'] = currency
-				trx_details['from_amount'] = parameters['start_amount_' + currency]
-				trx_details['start_amount'] = parameters['start_amount_' + currency]
+				trx_details['from_amount'] = config.parameters['start_amount_' + currency]
+				trx_details['start_amount'] = config.parameters['start_amount_' + currency]
 
 		updateCounters(transaction, trx_details, trx_string)
 
@@ -138,12 +135,12 @@ def doStuff():
 def highestValueTransaction(counters):
 	transaction_values = []
 
-	for transaction, value in counters['ratio'].items():
+	for transaction, value in config.counters['ratio'].items():
 		transaction_values.append(value)
 
 	transaction_values.sort(reverse=True)
 
-	for transaction, value in counters['ratio'].items():
+	for transaction, value in config.counters['ratio'].items():
 		if value == transaction_values[0]:
 			return transaction
 
@@ -158,41 +155,41 @@ def transactionString(transaction):
 	return string
 
 def updateCounters(transaction, trx_details, string):
-	global counters
+#	global counters
                 
-	if string not in counters['success']:
-		counters['success'][string] = 0
+	if string not in config.counters['success']:
+		config.counters['success'][string] = 0
 
-	if string not in counters['ratio']:
-		counters['ratio'][string] = 0
+	if string not in config.counters['ratio']:
+		config.counters['ratio'][string] = 0
 
-	if string not in counters['highest_ratio']:
-		counters['highest_ratio'][string] = 0
+	if string not in config.counters['highest_ratio']:
+		config.counters['highest_ratio'][string] = 0
 
-	counters['success'][string] = increaseValue(trx_details['start_amount'], trx_details['from_amount'], counters['success'][string])
-	counters['ratio'][string] = trx_details['from_amount'] / trx_details['start_amount']
-	counters['highest_ratio'][string] = compare_and_update(counters['highest_ratio'][string],  counters['ratio'][string])
+	config.counters['success'][string] = increaseValue(trx_details['start_amount'], trx_details['from_amount'], config.counters['success'][string])
+	config.counters['ratio'][string] = trx_details['from_amount'] / trx_details['start_amount']
+	config.counters['highest_ratio'][string] = compare_and_update(config.counters['highest_ratio'][string],  config.counters['ratio'][string])
 
 def calculateProfitability(order_book, trx_details, trx_string):
-	global parameters
+#	global config.parameters
 
 	logger.debug(trx_details)
 
 	from_amount = trx_details['from_amount']
 	from_currency = trx_details['from_currency']
 	to_currency = trx_details['to_currency']
-	directions_buy = directions['buy']
-	directions_sell = directions['sell']
+	directions_buy = config.directions['buy']
+	directions_sell = config.directions['sell']
 
 	if from_currency in directions_buy:
 		if to_currency in directions_buy[from_currency]:
-			to_amount = buy(order_book, from_currency, to_currency, parameters['adjustment'], from_amount)
 			type = 'buy'
+			to_amount = buy(type, order_book, from_currency, to_currency, config.parameters['adjustment'], from_amount)
 
 	if from_currency in directions_sell:
 		if to_currency in directions_sell[from_currency]:
-               	        to_amount = sell(order_book, from_currency, to_currency, parameters['adjustment'], from_amount)
 			type = 'sell'
+               	        to_amount = sell(type, order_book, from_currency, to_currency, config.parameters['adjustment'], from_amount)
 
 	history = {'from_currency': trx_details['from_currency'],
 		   'from_amount': trx_details['from_amount'],
@@ -206,7 +203,7 @@ def calculateProfitability(order_book, trx_details, trx_string):
 	return {'trx_details': trx_details, 'history': history}
 
 def validateProfitability(history):
-	highest_value_transaction = highestValueTransaction(counters)
+	highest_value_transaction = highestValueTransaction(config.counters)
 	transaction = history[highest_value_transaction]
 
 	first_transaction = 1
@@ -218,10 +215,11 @@ def validateProfitability(history):
 	if after_amount > before_amount:
 		executeTransaction(transaction)
 	else:
-		print "Nope: Highest value transaction has ratio: ", counters['ratio'][highest_value_transaction]
+		print "Nope: Highest value transaction has ratio: ", config.counters['ratio'][highest_value_transaction]
 
 def executeTransaction(transaction_steps):
 	print transaction_steps
+	client_redis.set('currencies', transaction_steps.keys)
 	for step in transaction_steps:
 		print transaction_steps[step]['from_currency']
 		client_redis.publish(transaction_steps[step]['from_currency'], transaction_steps[step])
@@ -238,9 +236,9 @@ while True:
 
 		history = doStuff()
 
-		for type in sorted(counters):
-			#print "%s: %s" % (type, counters[type])
-			logger.debug(counters[type])
+		for type in sorted(config.counters):
+			#print "%s: %s" % (type, config.counters[type])
+			logger.debug(config.counters[type])
 
 		validateProfitability(history)
 		print datetime.datetime.now()
