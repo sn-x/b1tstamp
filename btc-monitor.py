@@ -42,18 +42,20 @@ def subscribe(currency, conversion):
         client_bitstamp_ws.subscribe("order_book", currency, conversion)
 
 def possibletrasactions():
-	currencies = []
+#	currencies = []
 	transactions = []
 
-	for type in config.directions:
-		type_dic = config.directions[type]
-		for currency in type_dic:
-			currency_dic = type_dic[currency]
-			for trx in currency_dic:
-				currencies.append(trx)
+#	for type in config.directions:
+#		type_dic = config.directions[type]
+#		for currency in type_dic:
+#			currency_dic = type_dic[currency]
+#			for trx in currency_dic:
+#				currencies.append(trx)
 
-	currencies = list(set(currencies))
-	permutations = list(itertools.permutations(currencies))
+#	currencies = list(set(currencies))
+	print config.currencies
+#	sys.exit(1)
+	permutations = list(itertools.permutations(config.currencies))
 
 	for trx_flow in permutations:
 		trx_flow = list(trx_flow)
@@ -222,7 +224,7 @@ def executeTransaction(transaction_steps):
 	client_redis.set('currencies', transaction_steps.keys)
 	for step in transaction_steps:
 		print transaction_steps[step]['from_currency']
-		client_redis.publish(transaction_steps[step]['from_currency'], transaction_steps[step])
+		client_redis.publish(transaction_steps[step]['from_currency'], str(transaction_steps[step]))
 
 # ------ START HERE
 

@@ -18,16 +18,22 @@ class BitstampWebsocketClient(object):
                                          "order_deleted"]}
         for channel in self.messages.keys():
             self.channels[channel] = []
-            for pair in ["btceur",
+            for pair in ["btceur", "btcusd",
                          "eurusd",
-			 "ltcusd",
-			 "ltceur",
-			 "ltcbtc"]:
+			 "ltcusd", "ltceur", "ltcbtc",
+			 "xrpusd", "xrpeur", "xrpbtc",
+			 "ethusd", "etheur", "ethbtc"]:
                 self.channels[channel + "_" + pair] = []
         self.orderbook = {"btc": {"eur": None,
                                   "usd": None},
                           "eur": {"usd": None},
 			  "ltc": {"eur": None,
+				  "usd": None,
+				  "btc": None},
+			  "xrp": {"eur": None,
+				  "usd": None,
+				  "btc": None},
+			  "eth": {"eur": None,
 				  "usd": None,
 				  "btc": None}}
         self.lastprice = self.orderbook
