@@ -42,19 +42,7 @@ def subscribe(currency, conversion):
         client_bitstamp_ws.subscribe("order_book", currency, conversion)
 
 def possibletrasactions():
-#	currencies = []
 	transactions = []
-
-#	for type in config.directions:
-#		type_dic = config.directions[type]
-#		for currency in type_dic:
-#			currency_dic = type_dic[currency]
-#			for trx in currency_dic:
-#				currencies.append(trx)
-
-#	currencies = list(set(currencies))
-	print config.currencies
-#	sys.exit(1)
 	permutations = list(itertools.permutations(config.currencies))
 
 	for trx_flow in permutations:
@@ -173,8 +161,6 @@ def updateCounters(transaction, trx_details, string):
 	config.counters['highest_ratio'][string] = compare_and_update(config.counters['highest_ratio'][string],  config.counters['ratio'][string])
 
 def calculateProfitability(order_book, trx_details, trx_string):
-#	global config.parameters
-
 	logger.debug(trx_details)
 
 	from_amount = trx_details['from_amount']
@@ -225,6 +211,7 @@ def executeTransaction(transaction_steps):
 	for step in transaction_steps:
 		print transaction_steps[step]['from_currency']
 		client_redis.publish(transaction_steps[step]['from_currency'], str(transaction_steps[step]))
+#	sys.exit(1)
 
 # ------ START HERE
 
@@ -239,7 +226,6 @@ while True:
 		history = doStuff()
 
 		for type in sorted(config.counters):
-			#print "%s: %s" % (type, config.counters[type])
 			logger.debug(config.counters[type])
 
 		validateProfitability(history)
