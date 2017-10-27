@@ -1,9 +1,9 @@
-parameters  = {'start_amount_btc': 0.002,
-               'start_amount_ltc': 0.185,
-	       'start_amount_xrp': 5.6,
-	       'start_amount_eth': 0.004,
-               'start_amount_eur': 10,
-               'start_amount_usd': 10,
+parameters  = {'start_amount_btc': 0.0021, # 0.019
+               'start_amount_ltc': 0.21, # 1.9
+#	       'start_amount_xrp': 56,
+#	       'start_amount_eth': 0.04,
+               'start_amount_eur': 15, # 95
+               'start_amount_usd': 15, # 95
                'commision': 0.0025,  # 0.25%
                'adjustment': 0.00001 } # smallest value on b1tstamp?
 
@@ -48,7 +48,6 @@ def buyDirections():
 
 	for currency in buy:
 		if buy[currency]:
-			print buy[currency]
 			buy_2.update({currency: buy[currency]})
 
 	return buy_2
