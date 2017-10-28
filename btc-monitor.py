@@ -9,7 +9,7 @@ import sys
 import os
 
 client_bitstamp_ws = wsclient.BitstampWebsocketClient()
-client_redis = redis.StrictRedis(host='localhost', port=6379, db=0)
+client_redis = redis.StrictRedis(host='localhost', port=config.redis_port, db=0)
 
 def customLogger():
 	logger = logging.getLogger()

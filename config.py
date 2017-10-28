@@ -1,3 +1,5 @@
+redis_port = 6379
+
 parameters  = {'start_amount_btc': 0.0021, # 0.019
                'start_amount_ltc': 0.21, # 1.9
 #	       'start_amount_xrp': 56,
