@@ -22,7 +22,10 @@ rounds = { 'btcusd': {'value': 2, 'amount': 8 },
            'eurusd': {'value': 5, 'amount': 5 },
            'ltcusd': {'value': 2, 'amount': 8 },
            'ltceur': {'value': 2, 'amount': 8 },
-           'ltcbtc': {'value': 8, 'amount': 8 } }
+           'ltcbtc': {'value': 8, 'amount': 8 },
+           'ethusd': {'value': 2, 'amount': 8 },
+           'etheur': {'value': 2, 'amount': 8 },
+           'ethbtc': {'value': 8, 'amount': 8 } }
 
 def fetchCurrencies():
 	currencies = list()
