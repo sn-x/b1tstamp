@@ -19,7 +19,7 @@ class Listener(threading.Thread):
         def work(self, item):
 		trade = auth.trading_channel[item['channel']]
 		if isinstance(item['data'], long):
-			print "Subscription status for ", item['channel'], ": ", item['data']
+			print item['channel'], " - Subscription status for ", item['channel'], ": ", item['data']
 
 		if isinstance(item['data'], str):
 			trx = eval(item['data'])
@@ -62,18 +62,17 @@ class Listener(threading.Thread):
        	        balance = trade.account_balance(currency_pair['base'], currency_pair['quote'])
 		print channel + ": Request ", hash, ":", balance
 
-		round_amount = config.rounds[currency_pair['base'] + currency_pair['quote']]['amount']
 		round_value = config.rounds[currency_pair['base'] + currency_pair['quote']]['value']
 
 		if trx['type'] == "sell":
 			price = round((trx['to_amount'] / trx['from_amount']), round_value)
 			print channel + ": price: ", price
-			trade.sell_limit_order(round(trx['from_amount'], round_amount), price, currency_pair['base'], currency_pair['quote'])
+			trade.sell_limit_order(trx['from_amount'], price, currency_pair['base'], currency_pair['quote'])
 
                 if trx['type'] == "buy":
-                        price = round((trx['from_amount'] / trx['to_amount']), round_value)
+			price = round((trx['from_amount'] / trx['to_amount']), round_value)
                         print channel + ": price: ", price
-                        trade.buy_limit_order(round(trx['to_amount'], round_amount), price, currency_pair['base'], currency_pair['quote'])
+                        trade.buy_limit_order(trx['to_amount'], price, currency_pair['base'], currency_pair['quote'])
 
 		print channel + ": Sleeping.."
 		time.sleep(10)
@@ -86,7 +85,7 @@ class Listener(threading.Thread):
                         print channel + ":  -> Retrying.."
 			open_orders_count = self.orderBookEntries(trade)
 
-		thread.exit()
+		self.thread.exit()
 #		sys.exit(1)
 
 ## START HERE
@@ -94,11 +93,9 @@ class Listener(threading.Thread):
 def startListeners(redis_client):
         print "Building threads.."
         for currency in config.currencies:
-                print " + " + currency
                 client = Listener(redis_client, currency)
                 client.start()
 
-	print threading.active_count()
 	while threading.active_count() != 1:
 		time.sleep(1)
 

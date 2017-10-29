@@ -32,6 +32,12 @@ def fetchOrderBook():
 
         return self
 
+def currencyPair(type, from_currency, to_currency):
+	if type == 'buy':
+		return {'base': to_currency,  'quote': from_currency}
+	if type== 'sell':
+		return {'base': from_currency, 'quote': to_currency}
+
 def checkOrderBook(currency, conversion):
         while ('asks' and 'bids') not in client_bitstamp_ws.orderbook[currency][conversion]:
 		print "Empty orderbook. Resubscribing.. " + currency + " : " + conversion
@@ -66,19 +72,23 @@ def orderbookValue(type, orderbook, fromCurrency, toCurrency):
 
 def buy(type, orderbook, fromCurrency, toCurrency, adjustment, amount):
 	orderbook_value = orderbookValue(type, orderbook, fromCurrency, toCurrency)
+	currency_pair   = currencyPair(type, fromCurrency, toCurrency)
+        round_amount    = config.rounds[currency_pair['base'] + currency_pair['quote']]['amount']
 
 	self = ((amount / (orderbook_value + adjustment)) - 
 	       ((amount / (orderbook_value + adjustment)) * config.parameters['commision']))
 
-	return self
+	return round(self, round_amount)
 
 def sell(type, orderbook, fromCurrency, toCurrency, adjustment, amount):
 	orderbook_value = orderbookValue(type, orderbook, fromCurrency, toCurrency)
+        currency_pair   = currencyPair(type, fromCurrency, toCurrency)
+        round_amount    = config.rounds[currency_pair['base'] + currency_pair['quote']]['amount']
 
 	self = ((amount * (orderbook_value - adjustment)) - 
 	       ((amount * (orderbook_value - adjustment)) * config.parameters['commision']))
 
-	return self
+	return round(self, round_amount)
 
 def increaseValue(first, second, third):
         self = third
@@ -145,8 +155,6 @@ def transactionString(transaction):
 	return string
 
 def updateCounters(transaction, trx_details, string):
-#	global counters
-                
 	if string not in config.counters['success']:
 		config.counters['success'][string] = 0
 
