@@ -1,13 +1,13 @@
 redis_port = 6379
 
-parameters  = {'start_amount_btc': 0.0021, # 0.019
-               'start_amount_ltc': 0.21, # 1.9
+parameters  = {'start_amount_btc': 0.01, # 0.019
+               'start_amount_ltc': 1.3, # 1.9
 #	       'start_amount_xrp': 56,
 #	       'start_amount_eth': 0.04,
-               'start_amount_eur': 15, # 95
-               'start_amount_usd': 15, # 95
-               'commision': 0.0025,  # 0.25%
-               'adjustment': 0.00001 } # smallest value on b1tstamp?
+               'start_amount_eur': 70, # 95
+               'start_amount_usd': 70, # 95
+               'commision': 0.25, # 0.255%
+               'adjustment': 20 } # 1/10
 
 conversions = {'btc': {'usd', 'eur'},
                'eur': {'usd'},
@@ -17,11 +17,11 @@ conversions = {'btc': {'usd', 'eur'},
 
 counters = {'success': {}, 'ratio': {}, 'highest_ratio':{} }
 
-rounds = { 'btcusd': {'value': 2, 'amount': 8 },
-           'btceur': {'value': 2, 'amount': 8 },
+rounds = { 'btcusd': {'value': 2, 'amount': 5 },
+           'btceur': {'value': 2, 'amount': 5 },
            'eurusd': {'value': 5, 'amount': 5 },
-           'ltcusd': {'value': 2, 'amount': 8 },
-           'ltceur': {'value': 2, 'amount': 8 },
+           'ltcusd': {'value': 2, 'amount': 5 },
+           'ltceur': {'value': 2, 'amount': 5 },
            'ltcbtc': {'value': 8, 'amount': 8 },
            'ethusd': {'value': 2, 'amount': 8 },
            'etheur': {'value': 2, 'amount': 8 },

@@ -8,7 +8,7 @@ import auth
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 s.connect(('b8dbc4a5.carbon.hostedgraphite.com', 2003))
 api_key = "b7f5580c-2591-42bd-925d-4de11e097897"
-ticker = "eth"
+ticker = "ltc"
 balance = {}
 
 #count = 0

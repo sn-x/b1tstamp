@@ -15,7 +15,7 @@ class Listener(threading.Thread):
 		self.redis = client_redis
 		self.pubsub = self.redis.pubsub()
 		self.pubsub.subscribe(channels)
-    
+
         def work(self, item):
 		trade = auth.trading_channel[item['channel']]
 		if isinstance(item['data'], long):
