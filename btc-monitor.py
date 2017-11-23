@@ -46,7 +46,7 @@ def checkOrderBook(currency, conversion):
                 time.sleep(1)
 
 def subscribe(currency, conversion):
-        client_bitstamp_ws.subscribe("order_book", currency, conversion)
+	client_bitstamp_ws.subscribe("order_book", currency, conversion)
 
 def possibletrasactions():
 	transactions = []
@@ -77,30 +77,36 @@ def calculateAdjustment(orderbook, currency_pair):
 	adjustment = config.parameters['adjustment']
 	return (ask - bid) / adjustment
 
-def conversionMath(type, orderbook, fromCurrency, toCurrency, adjustment, amount):
+def conversionMath(trx_details, orderbook, adjustment):
 	self = {}
-	currency_pair   = currencyPair(type, fromCurrency, toCurrency)
+	type = trx_details['type']
+	self['from_amount'] = trx_details['from_amount']
+	from_currency = trx_details['from_currency']
+	to_currency = trx_details['to_currency']
+
+	currency_pair   = currencyPair(type, from_currency, to_currency)
 	orderbook_value = orderbookValue(type, orderbook, currency_pair)
 
 	round_amount    = config.rounds[currency_pair['base'] + currency_pair['quote']]['amount']
 
-	fee_rounding    = 100
-	if (toCurrency == "btc" and fromCurrency == "ltc") or (toCurrency == "ltc" and fromCurrency == "btc"):
+	fee_rounding = 100
+	if (to_currency == "btc" and from_currency == "ltc") or (to_currency == "ltc" and from_currency == "btc"):
 		fee_rounding = 100000
 
 	if type == "buy":
 		# NORMAL
-		self['fee'] = calculateFee(amount)
-		self['new_amount'] = round(((amount - self['fee']) / (orderbook_value + adjustment)), round_amount)
+		self['fee'] = calculateFee(self['from_amount'])
+		self['fee'] = math.ceil(self['fee'] * fee_rounding) / fee_rounding # bleee
+		self['new_amount'] = round(((self['from_amount'] - self['fee']) / (orderbook_value + adjustment)), round_amount)
 
 		# RECALCULATED
 		self['rounded_fee'] = math.ceil(self['fee'] * fee_rounding) / fee_rounding
 		self['modified_start_amount'] = round((self['rounded_fee'] / (config.parameters['commision'] / 100)), round_amount)
-		self['modified_new_amount'] = round(((self['modified_start_amount'] - self['rounded_fee']) / (orderbook_value + adjustment)), round_amount)
+		self['modified_new_amount'] = round(((self['modified_start_amount'] - self['fee']) / (orderbook_value + adjustment)), round_amount)
 
 	if type == "sell":
 		# NORMAL
-		new_amount_full = (amount * (orderbook_value - adjustment))
+		new_amount_full = (self['from_amount'] * (orderbook_value - adjustment))
 		self['fee'] = calculateFee(new_amount_full)
 		self['new_amount'] = round((new_amount_full - self['fee']), round_amount)
 
@@ -126,9 +132,66 @@ def compare_and_update(first, second):
 
         return self
 
+def alignPrice(type, amount, currency_pair, round_amount, orderbook_value):
+	fee_rounding = 100
+	if (currency_pair['base'] == "ltc" and currency_pair['quote'] == "btc") or (currency_pair['base'] == "btc" and currency_pair['quote'] == "ltc"):
+		fee_rounding = 100000
+
+	if type == 'buy':
+		fee = calculateFee(amount)
+		print "buy fee: ", fee
+		rounded_fee = math.ceil(fee * fee_rounding) / fee_rounding
+		print "buy rounded fee: ", rounded_fee
+		modified_amount = round(rounded_fee / (config.parameters['commision'] / 100), round_amount)
+		print "buy modified_amount: ", modified_amount
+		modified_amount = modified_amount
+
+	if type == 'sell':
+		new_amount_full = (amount * orderbook_value)
+		fee = calculateFee(new_amount_full)
+		print "sell fee: ", fee
+		rounded_fee = math.ceil(fee * fee_rounding) / fee_rounding
+		print "sell rounded fee: ", rounded_fee
+		modified_amount = round(rounded_fee / (config.parameters['commision'] / 100), round_amount)
+		modified_amount = round(((modified_amount) / (orderbook_value)), round_amount)
+		print "sell modified_amount: ", modified_amount
+
+	return modified_amount
+
+def startingAmount(type, from_currency, currency_pair, orderbook):
+
+	round_amount = config.rounds[currency_pair['base'] + currency_pair['quote']]['amount']
+	orderbook_value = orderbookValue(type, orderbook, currency_pair)
+
+	if from_currency == "btc":
+		start_amount = config.parameters['start_amount_btc']
+		aligned_amount = alignPrice(type, start_amount, currency_pair, round_amount, orderbook_value)
+		return	aligned_amount
+
+	if from_currency == "ltc":
+		temp_currency_pair = {'base': 'ltc',  'quote': 'btc'} # we need a currency pair betwen btc and ltc, because we do start amount calc.
+		temp_orderbook_value = orderbookValue(type, orderbook, temp_currency_pair)
+		start_amount = config.parameters['start_amount_btc'] / temp_orderbook_value
+		aligned_amount = alignPrice(type, start_amount, currency_pair, round_amount, orderbook_value)
+		return aligned_amount
+
+	if from_currency == "eur":
+		temp_currency_pair = {'base': 'btc',  'quote': 'eur'}
+		temp_orderbook_value = orderbookValue(type, orderbook, temp_currency_pair)
+		start_amount = config.parameters['start_amount_btc'] * temp_orderbook_value
+		aligned_amount = alignPrice(type, start_amount, currency_pair, round_amount, orderbook_value)
+		return aligned_amount
+
+	if from_currency == "usd":
+		temp_currency_pair = {'base': 'btc',  'quote': 'usd'}
+		temp_orderbook_value = orderbookValue(type, orderbook, temp_currency_pair)
+		start_amount = config.parameters['start_amount_btc'] * temp_orderbook_value
+		aligned_amount = alignPrice(type, start_amount, currency_pair, round_amount, orderbook_value)
+		return aligned_amount
+
 def doStuff():
 	history = {}
-	order_book = fetchOrderBook()
+	orderbook = fetchOrderBook()
 	transactions = possibletrasactions()
 
 	for transaction in transactions:
@@ -141,13 +204,21 @@ def doStuff():
 				trx_step += 1
 				history[trx_string][trx_step] = {}
 				trx_details['to_currency'] = currency
-				results = calculateProfitability(order_book, trx_details, trx_string)
-		                history[trx_string][trx_step].update(results['history'])
+				trx_details['type'] = calculateType(trx_details['from_currency'], trx_details['to_currency'])
+				trx_details['currency_pair'] = currencyPair(trx_details['type'], trx_details['from_currency'], trx_details['to_currency'])
+
+				if trx_details['start_amount'] == "null":
+					trx_details['start_amount'] = startingAmount(trx_details['type'], trx_details['from_currency'], trx_details['currency_pair'], orderbook)
+					print "starting_amount:", trx_details['start_amount']
+					trx_details['from_amount'] = trx_details['start_amount']
+
+				results = calculateProfitability(orderbook, trx_details, trx_string)
+				history[trx_string][trx_step].update(results['history'])
 				trx_details = results['trx_details']
 			else:
+				print
 				trx_details['from_currency'] = currency
-				trx_details['from_amount'] = config.parameters['start_amount_' + currency]
-				trx_details['start_amount'] = config.parameters['start_amount_' + currency]
+				trx_details['start_amount'] = "null"
 
 		updateCounters(transaction, trx_details, trx_string)
 
@@ -204,27 +275,25 @@ def calculateType(from_currency, to_currency):
 def calculateProfitability(order_book, trx_details, trx_string):
 	logger.debug(trx_details)
 
-	from_amount = trx_details['from_amount']
-	from_currency = trx_details['from_currency']
-	to_currency = trx_details['to_currency']
-	type = calculateType(from_currency, to_currency)
-        currency_pair = currencyPair(type, from_currency, to_currency)
-	adjustment = calculateAdjustment(order_book, currency_pair)
+	adjustment = calculateAdjustment(order_book, trx_details['currency_pair'])
+	result = conversionMath(trx_details, order_book, adjustment)
 
-	result = conversionMath(type, order_book, from_currency, to_currency, adjustment, from_amount)
-
-	history = {'from_currency': trx_details['from_currency'],
-		   'from_amount': trx_details['from_amount'],
-		   'to_currency': trx_details['to_currency'],
-		   'to_amount': result['new_amount'],
-		   'trx_fee': result['fee'],
-		   'trx_rounded_fee': result['rounded_fee'],
-		   'modified_start_amount': result['modified_start_amount'],
-		   'modified_new_amount': result['modified_new_amount'],
-		   'type': type }
-
-        trx_details['from_amount'] = result['new_amount']
-        trx_details['from_currency'] = to_currency
+	history = {
+		'type': trx_details['type'],
+		'from_currency': trx_details['from_currency'],
+		'from_amount': result['from_amount'],
+		'modified_start_amount': result['modified_start_amount'],
+		'to_currency': trx_details['to_currency'],
+		'to_amount': result['new_amount'],
+		'modified_new_amount': result['modified_new_amount'],
+		'trx_fee': result['fee'],
+		'trx_rounded_fee': result['rounded_fee']
+	}
+	print result['from_amount'], trx_details['from_currency']
+	print result['fee'], ":", result['rounded_fee']
+	# PREPARE FOR NEW TRX STEP
+	trx_details['from_amount'] = result['new_amount']
+	trx_details['from_currency'] = trx_details['to_currency']
 
 	return {'trx_details': trx_details, 'history': history}
 
@@ -238,16 +307,22 @@ def validateProfitability(history):
 	before_amount = transaction[first_transaction]['from_amount']
 	after_amount = transaction[last_transaction]['to_amount']
 
-	if after_amount > before_amount:
-		executeTransaction(transaction)
+	if config.counters['ratio'][highest_value_transaction] > 1:
+		if (after_amount - before_amount) > (after_amount * 0.004):
+			executeTransaction(transaction)
+		else:
+			logger.warning("Not enough juice")
+			print "Nope: Not enough juice: ", (after_amount - before_amount), "<", (after_amount * 0.0025)
 	else:
-		print "Nope: Highest value transaction has ratio: ", config.counters['ratio'][highest_value_transaction]
+		print "Highest value transaction has ratio: ", config.counters['ratio'][highest_value_transaction]
 
 def executeTransaction(transaction_steps):
-	print transaction_steps
+	logger.warning(transaction_steps)
+
 	client_redis.set('currencies', transaction_steps.keys)
+
 	for step in transaction_steps:
-		print transaction_steps[step]['from_currency']
+		#print transaction_steps[step]['from_currency']
 		client_redis.publish(transaction_steps[step]['from_currency'], str(transaction_steps[step]))
 #	sys.exit(1)
 
@@ -263,8 +338,8 @@ while True:
 
 		history = doStuff()
 
-		for type in sorted(config.counters):
-			logger.debug(config.counters[type])
+		#for type in sorted(config.counters):
+			#logger.warning(config.counters)
 
 		validateProfitability(history)
 		print datetime.datetime.now()

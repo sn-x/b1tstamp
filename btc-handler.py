@@ -36,10 +36,10 @@ class Listener(threading.Thread):
                                 self.work(item)
 
 	def currencyPair(self, trx):
-        	if trx['type'] == 'buy':
-                	return {'base': trx['to_currency'],  'quote': trx['from_currency']}
-	        if trx['type'] == 'sell':
-        	        return {'base': trx['from_currency'], 'quote': trx['to_currency']}
+		if trx['type'] == 'buy':
+			return {'base': trx['to_currency'],  'quote': trx['from_currency']}
+		if trx['type'] == 'sell':
+			return {'base': trx['from_currency'], 'quote': trx['to_currency']}
 
 	def orderBookEntries(self, trade):
 		count = 0
@@ -54,35 +54,39 @@ class Listener(threading.Thread):
 	def placeOrder(self, trade, currency_pair, trx, channel):
 		print "--------------------"
 		print channel
-        	print trx
+		print trx
 
 		hash = random.getrandbits(128)
 		print channel + ": Starting request: ", hash
 
-       	        balance = trade.account_balance(currency_pair['base'], currency_pair['quote'])
+		balance = trade.account_balance(currency_pair['base'], currency_pair['quote'])
 		print channel + ": Request ", hash, ":", balance
 
 		round_value = config.rounds[currency_pair['base'] + currency_pair['quote']]['value']
 
+		trx_size = trx['from_amount'] / config.min_order_size[currency_pair['base'] + currency_pair['quote']]
+		if trx_size > 2:
+			print channel + ": single amount: ", trx_size, ", fee: ", (trx_size * 0.0025)
+
 		if trx['type'] == "sell":
 			price = round((trx['to_amount'] / trx['from_amount']), round_value)
-			print channel + ": price: ", price
+			print channel + ": type: ", trx['type'], ", amount: ", trx['from_amount'],": price: ", price, currency_pair['base'], currency_pair['quote']
 			trade.sell_limit_order(trx['from_amount'], price, currency_pair['base'], currency_pair['quote'])
 
-                if trx['type'] == "buy":
+		if trx['type'] == "buy":
 			price = round((trx['from_amount'] / trx['to_amount']), round_value)
-                        print channel + ": price: ", price
-                        trade.buy_limit_order(trx['to_amount'], price, currency_pair['base'], currency_pair['quote'])
+			print channel + ": type: ", trx['type'], ", amount: ", trx['from_amount'],": price: ", price, currency_pair['base'], currency_pair['quote']
+			trade.buy_limit_order(trx['to_amount'], price, currency_pair['base'], currency_pair['quote'])
 
 		print channel + ": Sleeping.."
 		time.sleep(10)
 		open_orders_count = self.orderBookEntries(trade)
 
-                while open_orders_count != 0:
+		while open_orders_count != 0:
 			print channel + ": Total open orders: ", open_orders_count
 			print channel + ":  -> Sleeping for 60 sec..."
 			time.sleep(60)
-                        print channel + ":  -> Retrying.."
+			print channel + ":  -> Retrying.."
 			open_orders_count = self.orderBookEntries(trade)
 
 		self.thread.exit()
@@ -106,4 +110,3 @@ def startListeners(redis_client):
 if __name__ == "__main__":
         redis_client = redis.StrictRedis(host='localhost', port=config.redis_port, db=0)
         startListeners(redis_client)
-
