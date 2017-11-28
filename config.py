@@ -2,9 +2,10 @@ redis_port = 6379
 counters = {'success': {}, 'ratio': {}, 'highest_ratio':{} }
 
 parameters  = {
-	'start_amount_btc': 0.0020, # smallest amount
-	'commision': 0.25, #
-	'adjustment': 20 } # 1/10
+	'start_amount_btc': 0.0010, # smallest amount
+	'commision': 0.25, # 0.25%
+	'adjustment': 20, # (ask - bid) / adjustment
+	'increase': 0.001 } # (new amount + (new amount * increase))
 
 conversions = {
 	'btc': {'usd', 'eur'},
@@ -19,7 +20,7 @@ min_order_size = {
 	'eurusd': 5,
 	'ltcusd': 5,
 	'ltceur': 5,
-	'ltcbtc': 0.002 }
+	'ltcbtc': 0.001 }
 
 rounds = {
 	'btcusd': {'value': 2, 'amount': 5 },
