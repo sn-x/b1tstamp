@@ -4,15 +4,8 @@ counters = {'success': {}, 'ratio': {}, 'highest_ratio':{} }
 parameters  = {
 	'start_amount_btc': 0.0010, # smallest amount
 	'commision': 0.25, # 0.25%
-	'adjustment': 20, # (ask - bid) / adjustment
-	'increase': 0.001 } # (new amount + (new amount * increase))
-
-conversions = {
-	'btc': {'usd', 'eur'},
-	'eur': {'usd'},
-	'ltc': {'usd', 'eur', 'btc'} }
-#	'eth': {'usd', 'eur', 'btc'} }
-#	'xrp': {'usd', 'eur', 'btc'} }
+	'adjustment': 10, # (ask - bid) / adjustment
+	'increase': 0.004 } # (new amount + (new amount * increase))
 
 min_order_size = {
 	'btcusd': 5,
@@ -26,12 +19,22 @@ rounds = {
 	'btcusd': {'value': 2, 'amount': 5 },
 	'btceur': {'value': 2, 'amount': 5 },
 	'eurusd': {'value': 5, 'amount': 5 },
-	'ltcusd': {'value': 2, 'amount': 5 },
-	'ltceur': {'value': 2, 'amount': 5 },
-	'ltcbtc': {'value': 8, 'amount': 5 },
+	'ltcusd': {'value': 2, 'amount': 8 },
+	'ltceur': {'value': 2, 'amount': 8 },
+	'ltcbtc': {'value': 8, 'amount': 8 },
 	'ethusd': {'value': 2, 'amount': 5 },
 	'etheur': {'value': 2, 'amount': 5 },
 	'ethbtc': {'value': 8, 'amount': 5 } }
+
+conversions = {
+	'btc': {'usd', 'eur'},
+	'eur': {'usd'},
+	'ltc': {'usd', 'eur', 'btc'} }
+#	'ltc': {'btc'} }
+#	'eth': {'usd', 'eur', 'btc'} }
+#	'xrp': {'usd', 'eur', 'btc'} }
+
+########## helper functions below
 
 def fetchCurrencies():
 	currencies = list()

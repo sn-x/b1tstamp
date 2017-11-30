@@ -69,14 +69,19 @@ class Listener(threading.Thread):
 			print channel + ": single amount: ", trx_size, ", fee: ", (trx_size * 0.0025)
 
 		if trx['type'] == "sell":
-			price = round((trx['to_amount'] / trx['from_amount']), round_value)
-			print channel + ": type: ", trx['type'], ", amount: ", trx['from_amount'],": price: ", price, currency_pair['base'], currency_pair['quote']
+			price = trx['rounded_adjusted_orderbook']
 			trade.sell_limit_order(trx['from_amount'], price, currency_pair['base'], currency_pair['quote'])
+			time.sleep(1)
+			print channel
+			print "type: ", trx['type'], ", amount: ", trx['from_amount'],": price: ", price, currency_pair['base'], currency_pair['quote']
 
 		if trx['type'] == "buy":
-			price = round((trx['from_amount'] / trx['to_amount']), round_value)
-			print channel + ": type: ", trx['type'], ", amount: ", trx['from_amount'],": price: ", price, currency_pair['base'], currency_pair['quote']
+			price = trx['rounded_adjusted_orderbook']
 			trade.buy_limit_order(trx['to_amount'], price, currency_pair['base'], currency_pair['quote'])
+			time.sleep(2)
+			print channel
+			print "type: ", trx['type'], ", amount: ", trx['from_amount'],": price: ", price, currency_pair['base'], currency_pair['quote']
+
 
 		print channel + ": Sleeping.."
 		time.sleep(10)
