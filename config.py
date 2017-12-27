@@ -4,8 +4,9 @@ counters = {'success': {}, 'ratio': {}, 'highest_ratio':{} }
 parameters  = {
 	'start_amount_btc': 0.0010, # smallest amount
 	'commision': 0.25, # 0.25%
-	'adjustment': 10, # (ask - bid) / adjustment
-	'increase': 0.004 } # (new amount + (new amount * increase))
+	'adjustment': 30, # (ask - bid) / adjustment
+	'increase': 0.01, # (new amount + (new amount * increase))
+	'trx_multiplier': 1 } # trx multiplier
 
 min_order_size = {
 	'btcusd': 5,
@@ -19,8 +20,8 @@ rounds = {
 	'btcusd': {'value': 2, 'amount': 5 },
 	'btceur': {'value': 2, 'amount': 5 },
 	'eurusd': {'value': 5, 'amount': 5 },
-	'ltcusd': {'value': 2, 'amount': 8 },
-	'ltceur': {'value': 2, 'amount': 8 },
+	'ltcusd': {'value': 2, 'amount': 5 },
+	'ltceur': {'value': 2, 'amount': 5 },
 	'ltcbtc': {'value': 8, 'amount': 8 },
 	'ethusd': {'value': 2, 'amount': 5 },
 	'etheur': {'value': 2, 'amount': 5 },

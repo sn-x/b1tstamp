@@ -12,13 +12,13 @@ ticker = "ltc"
 balance = {}
 
 count = 0
-for currency in config.conversions:
-	for pair in config.conversions[currency]:
-		count += len(auth.trading_client.open_orders(currency, pair))
+#for currency in config.conversions:
+#	for pair in config.conversions[currency]:
+#		count += len(auth.trading_client.open_orders(currency, pair))
 
-if count != 0:
-	print "Open trades.."
-	sys.exit(1)
+#if count != 0:
+#	print "Open trades.."
+#	sys.exit(1)
 
 for currency in config.conversions:
 	for pair in config.conversions[currency]:

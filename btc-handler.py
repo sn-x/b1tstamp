@@ -24,7 +24,11 @@ class Listener(threading.Thread):
 		if isinstance(item['data'], str):
 			trx = eval(item['data'])
 			currency_pair = self.currencyPair(trx)
-			self.placeOrder(trade, currency_pair, trx, item['channel'])
+
+			loop = 0
+			while loop < config.parameters['trx_multiplier']:
+				self.placeOrder(trade, currency_pair, trx, item['channel'])
+				loop += 1
 
         def run(self):
                 for item in self.pubsub.listen():
@@ -41,13 +45,16 @@ class Listener(threading.Thread):
 		if trx['type'] == 'sell':
 			return {'base': trx['from_currency'], 'quote': trx['to_currency']}
 
-	def orderBookEntries(self, trade):
+	def orderBookEntries(self, trade, currency_pair):
 		count = 0
 		for currency in config.conversions:
 			for pair in config.conversions[currency]:
 				open_orders = trade.open_orders(currency, pair)
-				print currency, pair, ": ", open_orders
+				#print currency, pair, ": ", open_orders
 				count += len(open_orders)
+
+		open_orders = trade.open_orders(currency_pair['base'], currency_pair['quote'])
+		print currency_pair['base'], currency_pair['quote'], ": ", open_orders
 
 		return count
 
@@ -85,14 +92,14 @@ class Listener(threading.Thread):
 
 		print channel + ": Sleeping.."
 		time.sleep(10)
-		open_orders_count = self.orderBookEntries(trade)
+		open_orders_count = self.orderBookEntries(trade, currency_pair)
 
-		while open_orders_count != 0:
+		while open_orders_count > 3:
 			print channel + ": Total open orders: ", open_orders_count
 			print channel + ":  -> Sleeping for 60 sec..."
 			time.sleep(60)
 			print channel + ":  -> Retrying.."
-			open_orders_count = self.orderBookEntries(trade)
+			open_orders_count = self.orderBookEntries(trade, currency_pair)
 
 		self.thread.exit()
 #		sys.exit(1)

@@ -51,7 +51,7 @@ def subscribe(currency, conversion):
 def possibletrasactions():
 	transactions = []
 
-	permutations = list(itertools.permutations(config.currencies, 2))
+	permutations = list(itertools.permutations(config.currencies))
 
 	# append starting currency
 	for trx_flow in permutations:
@@ -325,11 +325,11 @@ def validateProfitability(history):
 			executeTransaction(transaction)
 		else:
 			string = (after_amount - before_amount), "<", (after_amount * config.parameters['increase']), transaction[last_transaction]['to_currency'], "(", config.counters['ratio'][highest_value_transaction], ")"
-			logger.warning("Not enough juice: %s", string)
+			#logger.warning("Not enough juice: %s", string)
 			print "Nope: Not enough juice: ", string
 	else:
 		counter = str(config.counters['ratio'][highest_value_transaction])
-		logger.warning("Highest value transaction has ratio: %s", counter)
+		#logger.warning("Highest value transaction has ratio: %s", counter)
 		print "Highest value transaction has ratio: ", config.counters['ratio'][highest_value_transaction]
 
 def executeTransaction(transaction_steps):
